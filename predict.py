@@ -42,7 +42,7 @@ def test_model(args):
         )
     print(model)
 
-    model.load_state_dict(torch.load('pretrained_models/{}.pth'.format(args.model_name), map_location='cuda'))
+    model.load_state_dict(torch.load('pretrained_models/{}.pth'.format(args.model_name), map_location=args.device))
     model = model.to(torch.device(args.device))
     model.eval()
 
@@ -97,7 +97,7 @@ def test_model(args):
         dump_steps=None,
         noise=None,
         const_noise=False,
-        device="cuda"
+        device=args.device
     )
     prediction = prediction.squeeze()
     prediction = prediction.detach().cpu().numpy()
