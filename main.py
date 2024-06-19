@@ -66,7 +66,8 @@ def trainer_diff(args, train_loader, dev_loader, model, diffusion, optimizer, ep
                 optimizer.step()
                 optimizer.zero_grad()
                 del audio, vertice, template, one_hot
-                torch.cuda.empty_cache()
+                if device == "cuda":
+                    torch.cuda.empty_cache()
 
             pbar.set_description(
                 "(Epoch {}, iteration {}) TRAIN LOSS:{:.8f}".format((e + 1), iteration, np.mean(loss_log)))
@@ -131,7 +132,8 @@ def trainer_diff(args, train_loader, dev_loader, model, diffusion, optimizer, ep
         current_loss = np.mean(valid_loss_log)
 
         val_losses.append(current_loss)
-        if e == args.max_epoch or e % 25 == 0 and e != 0:
+        # if e == args.max_epoch or e % 25 == 0 and e != 0:
+        if True:
             torch.save(model.state_dict(), os.path.join(save_path, f'{args.model}_{args.dataset}_{e}.pth'))
             plot_losses(train_losses, val_losses, os.path.join(save_path, f"losses_{args.model}_{args.dataset}"))
         print("epcoh: {}, current loss:{:.8f}".format(e + 1, current_loss))
@@ -270,7 +272,7 @@ def main():
     parser.add_argument("--vertices_path", type=str, default="vertices_npy", help='path of the ground truth')
     parser.add_argument("--gradient_accumulation_steps", type=int, default=1, help='gradient accumulation')
     parser.add_argument("--max_epoch", type=int, default=50, help='number of epochs')
-    parser.add_argument("--device", type=str, default="cuda")
+    parser.add_argument("--device", type=str, default="cuda", help='device to use (cuda or cpu)')
     parser.add_argument("--model", type=str, default="face_diffuser", help='name of the trained model')
     parser.add_argument("--template_file", type=str, default="templates.pkl",
                         help='path of the train subject templates')
@@ -288,7 +290,10 @@ def main():
     parser.add_argument("--num_samples", type=int, default=1, help='number of samples to generate per audio')
     args = parser.parse_args()
 
-    assert torch.cuda.is_available()
+
+    if args.device == "cuda":
+        assert torch.cuda.is_available()
+
     diffusion = create_gaussian_diffusion(args)
 
     if 'damm' in args.dataset:
@@ -312,15 +317,14 @@ def main():
             num_layers=args.gru_layers,
         )
     print("model parameters: ", count_parameters(model))
-    cuda = torch.device(args.device)
-
-    model = model.to(cuda)
+    device = torch.device(args.device)
+    model = model.to(device)
     dataset = get_dataloaders(args)
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
 
     model = trainer_diff(args, dataset["train"], dataset["valid"], model, diffusion, optimizer,
-                         epoch=args.max_epoch, device=args.device)
-    test_diff(args, model, dataset["test"], args.max_epoch, diffusion, device=args.device)
+                         epoch=args.max_epoch, device=device)
+    test_diff(args, model, dataset["test"], args.max_epoch, diffusion, device=device)
 
 
 if __name__ == "__main__":

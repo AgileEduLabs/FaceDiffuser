@@ -6,3 +6,5 @@ venv/
 data/
 demo/*
 pretrained_models/*
+save/*
+result/*
